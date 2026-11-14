@@ -1,6 +1,6 @@
 # Letra a Letra
 
-Juego de palabras con repetición espaciada. Aparece una letra y una definición, y tenés que escribir la palabra. Son 1580 palabras de la A a la Z, con Ñ incluida: unas 1100 de nivel básico y más de 460 difíciles (ciencia, geografía, historia, vocabulario culto). Podés filtrar por letra y por nivel.
+Juego de palabras con repetición espaciada. Aparece una letra y una definición, y tenés que escribir la palabra. Son 2928 palabras de nivel difícil, de la A a la Z con Ñ, repartidas en 11 temas: cuerpo humano y salud, animales, plantas y naturaleza, ciencia, geografía, Argentina, historia universal, lengua y literatura, arte, música y mitología, sociedad, política y economía, y vida cotidiana. Las palabras salen en orden aleatorio y podés filtrar por tema y por letra.
 
 Si acertás, elegís **Difícil**, **Bien** o **Fácil** y cada botón muestra cuándo vuelve la palabra. Si fallás o tocás **No la sé**, la palabra vuelve en un minuto. No importan las tildes, y un error de tipeo en palabras largas se cuenta como bien.
 
@@ -15,4 +15,4 @@ En **Progreso → Cuenta y copia de seguridad** pegás un token de GitHub con el
 
 ## Agregar palabras
 
-Las palabras están en `words.js`, una por línea: `["A", "ABEJA", "Insecto que vuela de flor en flor y produce miel"]`; las difíciles llevan un `2` al final. Si vale más de una forma, separalas con `/` (por ejemplo `"FRUTILLA/FRESA"`). También se pueden agregar desde la pestaña **Palabras**.
+Las palabras están en `words.js`, una por línea: `["A", "ABDOMEN", "Parte del cuerpo entre el tórax y la pelvis…", "cu"]`. El último dato es el código del tema (la lista está en `window.TOPICS`). Si vale más de una forma, separalas con `/` (por ejemplo `"FRUTILLA/FRESA"`). También se pueden agregar desde la pestaña **Palabras**.

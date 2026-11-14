@@ -59,8 +59,13 @@ button { cursor: pointer; }
 
 .filter { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
 .filters { display: flex; flex-wrap: wrap; gap: 8px 16px; }
-.lvl { align-self: center; margin-top: -8px; background: var(--hard-bg); color: var(--hard-fg); border-radius: 999px; padding: 2px 12px; font-size: 13px; font-weight: 700; letter-spacing: 0.03em; }
-.lvl.sm { margin: 0; padding: 1px 8px; font-size: 11px; vertical-align: 2px; }
+.topic { align-self: center; margin-top: -8px; background: var(--surface-2); color: var(--muted); border-radius: 999px; padding: 2px 12px; font-size: 13px; font-weight: 600; }
+.row .tp { font-size: 12px; color: var(--muted); }
+.tlist { display: flex; flex-direction: column; gap: 10px; }
+.tl { background: none; border: 0; padding: 0; text-align: left; display: flex; flex-direction: column; gap: 4px; }
+.tl .tt { display: flex; justify-content: space-between; gap: 8px; font-size: 15px; font-weight: 600; }
+.tl .tt small { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+.form select { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; width: 100%; }
 .filter select { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-weight: 600; color: var(--fg); }
 
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 22px 20px; display: flex; flex-direction: column; gap: 18px; }
@@ -187,22 +192,21 @@ details.add summary { cursor: pointer; font-weight: 600; }
   }
 
   /* ---------- Mazo ---------- */
-  function mk(id, l, w, d, k, n) { var alts = w.split("/").map(function (x) { return x.trim(); }).filter(Boolean); return { id: id, l: l, w: alts[0], alts: alts, d: d, k: k, n: n || 1 }; }
-  var perLetter = {}, usedIds = {};
+  var TOPICS = window.TOPICS || {}, TKEYS = Object.keys(TOPICS);
+  function tname(t) { return TOPICS[t] || "Mis palabras"; }
+  function mk(id, l, w, d, t) { var alts = w.split("/").map(function (x) { return x.trim(); }).filter(Boolean); return { id: id, l: l, w: alts[0], alts: alts, d: d, t: t || "mine" }; }
+  var usedIds = {};
   var BUILTIN = (window.WORDS || []).map(function (e) {
-    var n = e[3] || 1, key = e[0] + n;
-    var k = perLetter[key] = (perLetter[key] || 0) + 1;
     var id = norm(e[1].split("/")[0]);
     while (usedIds[id]) id += "2";
     usedIds[id] = 1;
-    // Las difíciles se van intercalando de a poco entre las básicas.
-    return mk(id, e[0], e[1], e[2], n === 2 ? k * 2.5 + 0.5 : k, n);
+    return mk(id, e[0], e[1], e[2], e[3]);
   });
 
   /* ---------- Estado y guardado ---------- */
   var LS = "letra-a-letra:v1";
-  function fresh() { return { cards: {}, custom: [], cfg: { newPerDay: 20, letra: "", nivel: 0 }, daily: { day: 0, newDone: 0 }, log: {}, savedAt: 0 }; }
-  function normS(r) { var o = Object.assign(fresh(), r || {}); o.cfg = Object.assign({ newPerDay: 20, letra: "", nivel: 0 }, o.cfg); return o; }
+  function fresh() { return { cards: {}, custom: [], cfg: { newPerDay: 20, letra: "", tema: "" }, daily: { day: 0, newDone: 0 }, log: {}, savedAt: 0 }; }
+  function normS(r) { var o = Object.assign(fresh(), r || {}); o.cfg = Object.assign({ newPerDay: 20, letra: "", tema: "" }, o.cfg); return o; }
   var S = fresh();
   try { var raw = localStorage.getItem(LS); if (raw) S = normS(JSON.parse(raw)); } catch (err) {}
 
@@ -294,7 +298,7 @@ details.add summary { cursor: pointer; font-weight: 600; }
   function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
   function rebuild() {
     byId = {};
-    var all = BUILTIN.concat(S.custom.map(function (c) { return mk(c.id, c.l, c.w, c.d, 0); }));
+    var all = BUILTIN.concat(S.custom.map(function (c) { return mk(c.id, c.l, c.w, c.d, c.t); }));
     all.forEach(function (d) { byId[d.id] = d; });
     // Orden aleatorio. La semilla se guarda con el progreso, así el orden es el mismo en todos tus dispositivos.
     if (!S.cfg.seed) S.cfg.seed = Math.floor(Math.random() * 2147483647) + 1;
@@ -344,8 +348,8 @@ details.add summary { cursor: pointer; font-weight: 600; }
 
   /* ---------- Cola ---------- */
   var tab = "study", cur = null, phase = "ask", typed = "", result = null, typo = false, ahead = false, undo = null;
-  var confirmReset = false, formErr = "", q = "", deckLetter = "", deckLevel = 0, deckLimit = 150;
-  function inFilter(d) { return (!S.cfg.letra || d.l === S.cfg.letra) && (!S.cfg.nivel || d.n === S.cfg.nivel); }
+  var confirmReset = false, formErr = "", q = "", deckLetter = "", deckTopic = "", deckLimit = 150;
+  function inFilter(d) { return (!S.cfg.letra || d.l === S.cfg.letra) && (!S.cfg.tema || d.t === S.cfg.tema); }
   function queues() {
     ensureDaily();
     var now = Date.now(), today = dayNum(now), learn = [], rev = [], nw = [];
@@ -421,11 +425,13 @@ details.add summary { cursor: pointer; font-weight: 600; }
         return '<button class="tab" role="tab" data-tab="' + t[0] + '" aria-selected="' + (tab === t[0]) + '">' + t[1] + "</button>";
       }).join("") + "</nav>";
   }
-  function levelSelect(id, val) {
-    return '<label class="filter">Nivel <select id="' + id + '">' + [[0, "Todos"], [1, "Básico"], [2, "Difícil"]].map(function (x) {
-      return '<option value="' + x[0] + '"' + (val === x[0] ? " selected" : "") + ">" + x[1] + "</option>"; }).join("") + "</select></label>";
+  function topicSelect(id, val) {
+    var opts = [["", "Todos"]].concat(TKEYS.map(function (k) { return [k, TOPICS[k]]; }));
+    if (S.custom.length) opts.push(["mine", "Mis palabras"]);
+    return '<label class="filter">Tema <select id="' + id + '">' + opts.map(function (x) {
+      return '<option value="' + x[0] + '"' + (val === x[0] ? " selected" : "") + ">" + esc(x[1]) + "</option>"; }).join("") + "</select></label>";
   }
-  function filters() { return '<div class="filters">' + letterSelect("flt", S.cfg.letra) + levelSelect("nflt", S.cfg.nivel) + "</div>"; }
+  function filters() { return '<div class="filters">' + topicSelect("tflt", S.cfg.tema) + letterSelect("flt", S.cfg.letra) + "</div>"; }
   function letterSelect(id, val) {
     return '<label class="filter">Letra <select id="' + id + '"><option value="">Todas</option>' +
       LETTERS.map(function (l) { return "<option" + (val === l ? " selected" : "") + ">" + l + "</option>"; }).join("") + "</select></label>";
@@ -450,7 +456,7 @@ details.add summary { cursor: pointer; font-weight: 600; }
     var lc = phase === "result" ? (result.ok ? " ok" : " bad") : "";
     html = head(qq, kind) + filters() + '<section class="card">' +
       '<div class="letter' + lc + '" aria-label="Letra ' + d.l + '">' + d.l + "</div>" +
-      (d.n === 2 ? '<span class="lvl">Difícil</span>' : "") +
+      (S.cfg.tema ? "" : '<span class="topic">' + esc(tname(d.t)) + "</span>") +
       '<p class="def">' + esc(d.d) + "</p>";
     if (phase === "ask") {
       html += '<form class="ansrow" id="ansform" autocomplete="off"><input id="ans" type="text" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="Tu respuesta" aria-label="Tu respuesta">' +
@@ -490,19 +496,20 @@ details.add summary { cursor: pointer; font-weight: 600; }
     var qq = queues(), nq = norm(q), all = ORDER.slice().sort(function (a, b) { return LETTERS.indexOf(a.l) - LETTERS.indexOf(b.l) || a.k - b.k; });
     var list = all.filter(function (d) {
       if (deckLetter && d.l !== deckLetter) return false;
-      if (deckLevel && d.n !== deckLevel) return false;
+      if (deckTopic && d.t !== deckTopic) return false;
       if (!nq) return true;
       return cs(d.id).st !== "new" && d.alts.some(function (a) { return norm(a).indexOf(nq) > -1; });
     });
     var seen = all.filter(function (d) { return cs(d.id).st !== "new"; }).length;
     var html = head(qq, "") +
       '<p class="sync" style="margin:0">' + all.length + " palabras en total, ya viste " + seen + ". Las que todavía no jugaste aparecen tapadas.</p>" +
-      '<input class="search" id="q" type="search" placeholder="Buscar entre las que ya viste" value="' + esc(q) + '"><div class="filters">' + letterSelect("dflt", deckLetter) + levelSelect("dnflt", deckLevel) + "</div>" +
+      '<input class="search" id="q" type="search" placeholder="Buscar entre las que ya viste" value="' + esc(q) + '"><div class="filters">' + topicSelect("dtflt", deckTopic) + letterSelect("dflt", deckLetter) + "</div>" +
       '<section class="list">' +
       (list.length ? list.slice(0, deckLimit).map(function (d) {
         var hid = cs(d.id).st === "new";
         return '<div class="row"><span class="l">' + d.l + "</span><div>" +
-          '<div class="w' + (hid ? " hid" : "") + '">' + (hid ? "• • • • •" : esc(d.alts.join(" / "))) + (d.n === 2 ? ' <span class="lvl sm">Difícil</span>' : "") + "</div>" +
+          '<div class="w' + (hid ? " hid" : "") + '">' + (hid ? "• • • • •" : esc(d.alts.join(" / "))) + "</div>" +
+          '<div class="tp">' + esc(tname(d.t)) + "</div>" +
           '<div class="d">' + esc(d.d) + "</div></div>" +
           '<span class="st">' + stateLabel(d) + (d.id[0] === "u" && d.id[1] === "_" ? '<button class="x" data-del="' + esc(d.id) + '">Borrar</button>' : "") + "</span></div>";
       }).join("") : '<p class="sync" style="padding:12px 0">No hay palabras que coincidan.</p>') + "</section>" +
@@ -510,6 +517,7 @@ details.add summary { cursor: pointer; font-weight: 600; }
     html += '<details class="add"' + (formErr ? " open" : "") + "><summary>Agregar tu propia palabra</summary><form class=\"form\" id=\"addform\">" +
       '<label>Palabra<input id="f-w" autocomplete="off" placeholder="Ej.: MATE (si vale otra forma, separala con /)"></label>' +
       '<label>Definición<textarea id="f-d" placeholder="Infusión de yerba que se toma con bombilla"></textarea></label>' +
+      '<label>Tema<select id="f-t"><option value="mine">Mis palabras</option>' + TKEYS.map(function (k) { return '<option value="' + k + '">' + esc(TOPICS[k]) + "</option>"; }).join("") + "</select></label>" +
       (formErr ? '<p class="err">' + esc(formErr) + "</p>" : "") +
       '<button class="btn-main full" type="submit">Agregar</button></form></details>';
     return html;
@@ -542,7 +550,7 @@ details.add summary { cursor: pointer; font-weight: 600; }
   }
   function viewStats() {
     var qq = queues(), now = Date.now(), today = dayNum(now), cards = ORDER;
-    var nNew = 0, nLearn = 0, nYoung = 0, nMature = 0, hardT = 0, hardL = 0, fc = [], i, per = {};
+    var nNew = 0, nLearn = 0, nYoung = 0, nMature = 0, fc = [], i, per = {}, pt = {};
     for (i = 0; i < 14; i++) fc.push(0);
     LETTERS.forEach(function (l) { per[l] = { t: 0, y: 0, m: 0 }; });
     cards.forEach(function (d) {
@@ -551,7 +559,8 @@ details.add summary { cursor: pointer; font-weight: 600; }
       if (c.st === "new") nNew++;
       else if (c.st === "review") { if (c.ivl >= 21) { nMature++; p.m++; } else { nYoung++; p.y++; } var k = Math.max(0, c.dueDay - today); if (k < 14) fc[k]++; }
       else { nLearn++; p.y++; }
-      if (d.n === 2) { hardT++; if (c.st === "review") hardL++; }
+      var T = pt[d.t] || (pt[d.t] = { t: 0, y: 0, m: 0 });
+      T.t++; if (c.st === "review") { if (c.ivl >= 21) T.m++; else T.y++; } else if (c.st !== "new") T.y++;
     });
     var tot = cards.length || 1, L = S.log[today] || { n: 0, ok: 0 };
     var streak = 0, dd = today;
@@ -569,7 +578,12 @@ details.add summary { cursor: pointer; font-weight: 600; }
       '<div class="stats"><div class="stat"><b>' + L.n + "</b><span>respondidas hoy" + (L.n ? ", " + Math.round(L.ok / L.n * 100) + "% bien" : "") + "</span></div>" +
       '<div class="stat"><b>' + streak + "</b><span>" + (streak === 1 ? "día seguido" : "días seguidos") + "</span></div>" +
       '<div class="stat"><b>' + (nYoung + nMature) + " / " + cards.length + "</b><span>palabras aprendidas</span></div>" +
-      '<div class="stat"><b>' + hardL + " / " + hardT + "</b><span>difíciles aprendidas</span></div></div>" +
+      "</div>" +
+      '<section class="panel"><h3>Progreso por tema</h3><div class="tlist">' + TKEYS.concat(pt.mine ? ["mine"] : []).map(function (k) {
+        var T = pt[k] || { t: 0, y: 0, m: 0 }, tt = T.t || 1;
+        return '<button class="tl" data-topic="' + k + '" title="Jugar solo este tema"><span class="tt">' + esc(tname(k)) + "<small>" + (T.m + T.y) + " / " + T.t + "</small></span>" +
+          '<span class="stack"><i style="width:' + (T.m / tt * 100) + '%;background:var(--mature)"></i><i style="width:' + (T.y / tt * 100) + '%;background:var(--young)"></i></span></button>';
+      }).join("") + '</div><p class="sync" style="margin:0">Tocá un tema para jugar solo ese.</p></section>' +
       '<section class="panel"><h3>Progreso por letra</h3><div class="lgrid">' + grid + "</div>" +
       '<p class="sync" style="margin:0">Verde: palabras que ya dominás (vuelven en 21 días o más). Azul: las que estás aprendiendo. Tocá una letra para jugar solo esa.</p></section>' +
       '<section class="panel"><h3>Estado de las palabras</h3><div class="stack">' + seg(nNew, "--line") + seg(nLearn, "--learn") + seg(nYoung, "--young") + seg(nMature, "--mature") + "</div>" +
@@ -591,10 +605,11 @@ details.add summary { cursor: pointer; font-weight: 600; }
 
   /* ---------- Eventos ---------- */
   app.addEventListener("click", function (ev) {
-    var t = ev.target.closest("[data-tab],[data-act],[data-rate],[data-del],[data-letter]");
+    var t = ev.target.closest("[data-tab],[data-act],[data-rate],[data-del],[data-letter],[data-topic]");
     if (!t) return;
     if (t.dataset.tab) { tab = t.dataset.tab; render(); window.scrollTo(0, 0); return; }
     if (t.dataset.rate) { rate(+t.dataset.rate); return; }
+    if (t.dataset.topic) { S.cfg.tema = t.dataset.topic; S.cfg.letra = ""; cur = null; save(); tab = "study"; render(); window.scrollTo(0, 0); return; }
     if (t.dataset.letter) { S.cfg.letra = t.dataset.letter; cur = null; save(); tab = "study"; render(); window.scrollTo(0, 0); return; }
     if (t.dataset.del) { S.custom = S.custom.filter(function (d) { return d.id !== t.dataset.del; }); delete S.cards[t.dataset.del]; if (cur === t.dataset.del) cur = null; rebuild(); save(); render(); return; }
     var a = t.dataset.act;
@@ -617,8 +632,8 @@ details.add summary { cursor: pointer; font-weight: 600; }
     if (id === "imp" && ev.target.files[0]) { importJson(ev.target.files[0]); return; }
     if (id === "npd") { S.cfg.newPerDay = Math.max(0, Math.min(200, parseInt(ev.target.value, 10) || 0)); save(); render(); }
     if (id === "flt") { S.cfg.letra = ev.target.value; cur = null; save(); render(); }
-    if (id === "nflt") { S.cfg.nivel = +ev.target.value; cur = null; save(); render(); }
-    if (id === "dnflt") { deckLevel = +ev.target.value; deckLimit = 150; render(); }
+    if (id === "tflt") { S.cfg.tema = ev.target.value; cur = null; save(); render(); }
+    if (id === "dtflt") { deckTopic = ev.target.value; deckLimit = 150; render(); }
     if (id === "dflt") { deckLetter = ev.target.value; deckLimit = 150; render(); }
   });
   app.addEventListener("input", function (ev) {
@@ -642,7 +657,7 @@ details.add summary { cursor: pointer; font-weight: 600; }
     if (LETTERS.indexOf(first[0]) < 0) { formErr = "La palabra tiene que empezar con una letra."; render(); return; }
     if (byId[first]) { formErr = "Esa palabra ya está en el juego."; render(); return; }
     formErr = "";
-    S.custom.push({ id: "u_" + first, l: first[0], w: w.toUpperCase(), d: d });
+    S.custom.push({ id: "u_" + first, l: first[0], w: w.toUpperCase(), d: d, t: (document.getElementById("f-t") || {}).value || "mine" });
     rebuild(); save(); render();
   });
   document.addEventListener("keydown", function (ev) {
