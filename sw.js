@@ -1,4 +1,4 @@
-const C = "letra-a-letra-v3";
+const C = "letra-a-letra-v4";
 self.addEventListener("install", e => {
   self.skipWaiting();
   e.waitUntil(caches.open(C).then(c => c.addAll(["./", "index.html", "words.js", "manifest.webmanifest", "icon.svg"])).catch(() => {}));
