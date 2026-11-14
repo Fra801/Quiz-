@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2457E6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Letra a Letra">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Letra a Letra</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Una columna. Arriba contadores y pestañas; la tarjeta muestra una letra grande, la definición y un campo para escribir la palabra. */
+:root {
+  --bg: #F3F4F8; --surface: #FFFFFF; --surface-2: #EDEFF5; --fg: #12151C; --muted: #5A6174; --line: #DADDE6;
+  --accent: #2457E6; --accent-fg: #FFFFFF; --accent-soft: #DCE8FB;
+  --ok: #1D6A39; --ok-bg: #DDF3E4; --bad: #A12A1E; --bad-bg: #FBE1DE;
+  --hard-bg: #FBEBCB; --hard-fg: #86570A; --easy-bg: #DCE8FB; --easy-fg: #1D4F9C;
+  --learn: #A12A1E; --young: #1D4F9C; --mature: #1D6A39;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Figtree", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0F121A; --surface: #171B26; --surface-2: #1F2433; --fg: #E8EBF3; --muted: #9AA2B5; --line: #2A3042;
+    --accent: #7195FF; --accent-fg: #0B1020; --accent-soft: #16284A;
+    --ok: #84D69C; --ok-bg: #16301F; --bad: #FF9E92; --bad-bg: #3C1A17;
+    --hard-bg: #3A2B0B; --hard-fg: #F2C66E; --easy-bg: #16284A; --easy-fg: #92B7FF;
+    --learn: #FF9E92; --young: #92B7FF; --mature: #84D69C;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+  padding-block: max(16px, env(safe-area-inset-top, 0px)) 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+button, textarea, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.brand { font-family: var(--font-display); font-weight: 800; font-size: 26px; letter-spacing: -0.02em; margin: 0; }
+.brand span { color: var(--accent); }
+.counts { display: flex; gap: 14px; font-variant-numeric: tabular-nums; font-size: 15px; }
+.counts span { display: inline-flex; gap: 5px; align-items: baseline; color: var(--muted); }
+.counts b { font-size: 17px; }
+.counts .c-new b { color: var(--young); } .counts .c-learn b { color: var(--learn); } .counts .c-rev b { color: var(--mature); }
+.counts .on { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; color: var(--fg); }
+.acct { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 14px; font-weight: 500; color: var(--muted); }
+.acct.on { color: var(--ok); border-color: var(--ok); }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 14px; margin-bottom: -1px; color: var(--muted); font-weight: 600; }
+.tab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+
+.filter { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+.filters { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.lvl { align-self: center; margin-top: -8px; background: var(--hard-bg); color: var(--hard-fg); border-radius: 999px; padding: 2px 12px; font-size: 13px; font-weight: 700; letter-spacing: 0.03em; }
+.lvl.sm { margin: 0; padding: 1px 8px; font-size: 11px; vertical-align: 2px; }
+.filter select { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-weight: 600; color: var(--fg); }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 22px 20px; display: flex; flex-direction: column; gap: 18px; }
+.letter { align-self: center; width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-fg); font-family: var(--font-display); font-weight: 800; font-size: 54px; line-height: 1;
+  box-shadow: 0 0 0 6px var(--accent-soft); }
+.letter.ok { background: var(--ok); box-shadow: 0 0 0 6px var(--ok-bg); color: var(--surface); }
+.letter.bad { background: var(--bad); box-shadow: 0 0 0 6px var(--bad-bg); color: var(--surface); }
+.def { font-family: var(--font-display); font-weight: 600; font-size: 23px; line-height: 1.25; text-align: center; margin: 0; text-wrap: balance; }
+.tag { align-self: center; font-size: 13px; color: var(--muted); margin-top: -10px; }
+.ansrow { display: flex; gap: 8px; }
+.ansrow input { flex: 1; min-width: 0; background: var(--bg); border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px;
+  font-size: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.ansrow input:focus { border-color: var(--accent); outline: none; }
+.btn-main { background: var(--accent); color: var(--accent-fg); border: 0; border-radius: 12px; padding: 12px 18px; font-weight: 600; font-size: 17px; }
+.btn-main.full { width: 100%; }
+.btn-link { align-self: center; background: none; border: 0; color: var(--muted); text-decoration: underline; font-size: 15px; padding: 2px 6px; }
+.btn-ghost { background: none; border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; color: var(--fg); font-weight: 500; }
+.btn-ghost.sm { padding: 6px 12px; font-size: 14px; }
+.btn-danger { background: var(--bad-bg); color: var(--bad); border: 0; border-radius: 10px; padding: 8px 14px; font-weight: 600; }
+
+.verdict { text-align: center; display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.verdict .v { font-weight: 700; font-size: 17px; }
+.verdict .v.ok { color: var(--ok); } .verdict .v.bad { color: var(--bad); }
+.word { font-family: var(--font-display); font-weight: 800; font-size: 34px; letter-spacing: 0.02em; line-height: 1.1; overflow-wrap: anywhere; }
+.typed { color: var(--bad); text-decoration: line-through; font-weight: 600; overflow-wrap: anywhere; }
+.alts { color: var(--muted); font-size: 14px; }
+.rate { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.rate.one { grid-template-columns: 1fr; }
+.rb { border: 0; border-radius: 12px; padding: 10px 4px 11px; display: flex; flex-direction: column; align-items: center; gap: 1px; font-weight: 600; font-size: 16px; }
+.rb small { font-size: 12px; font-weight: 500; opacity: 0.85; font-variant-numeric: tabular-nums; }
+.rb.r1 { background: var(--bad-bg); color: var(--bad); }
+.rb.r2 { background: var(--hard-bg); color: var(--hard-fg); }
+.rb.r3 { background: var(--ok-bg); color: var(--ok); }
+.rb.r4 { background: var(--easy-bg); color: var(--easy-fg); }
+.hint { color: var(--muted); font-size: 13px; text-align: center; margin: 0; }
+.undo { align-self: center; background: none; border: 0; color: var(--muted); text-decoration: underline; font-size: 14px; }
+
+.done { text-align: center; align-items: center; padding: 36px 20px; }
+.done h2 { font-family: var(--font-display); font-size: 28px; margin: 0; letter-spacing: -0.02em; }
+.done p { margin: 0; color: var(--muted); max-width: 44ch; }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.stat b { display: block; font-family: var(--font-display); font-size: 30px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: 14px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
+.panel h3 { font-family: var(--font-display); font-size: 18px; margin: 0; }
+.stack { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--surface-2); }
+.stack i { display: block; height: 100%; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; color: var(--muted); }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; background: var(--c); vertical-align: -1px; }
+.lgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 10px; }
+.lg { background: none; border: 0; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.lg .ring { width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center;
+  background: conic-gradient(var(--mature) calc(var(--p) * 1%), var(--young) 0 calc(var(--q) * 1%), var(--surface-2) 0); }
+.lg .ring b { width: 40px; height: 40px; border-radius: 50%; background: var(--surface); display: grid; place-items: center; font-family: var(--font-display); font-size: 20px; }
+.lg small { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bars { display: flex; align-items: flex-end; gap: 4px; height: 110px; }
+.bar { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; gap: 3px; }
+.bar .col { width: 100%; border-radius: 4px 4px 0 0; background: var(--accent); min-height: 2px; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
+.bar .col i { display: block; background: var(--mature); width: 100%; }
+.bar .v { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1; }
+.axis { display: flex; gap: 4px; }
+.axis span { flex: 1; min-width: 0; text-align: center; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.axis span.today { color: var(--fg); font-weight: 700; }
+.setrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.setrow input[type="number"] { width: 80px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; }
+.sync { color: var(--muted); font-size: 13px; margin: 0; }
+.acct-row { display: flex; gap: 8px; }
+.acct-row input { flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; }
+.panel ol { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
+.panel a { color: var(--accent); }
+.err { color: var(--bad); font-size: 14px; margin: 0; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.search { width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.list { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 4px 16px; }
+.row { display: grid; grid-template-columns: 2em minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.row:last-child { border-bottom: 0; }
+.row .l { font-family: var(--font-display); font-weight: 800; font-size: 18px; color: var(--accent); }
+.row .w { font-weight: 700; }
+.row .w.hid { color: var(--muted); letter-spacing: 0.2em; font-weight: 500; }
+.row .d { color: var(--muted); font-size: 14px; line-height: 1.35; }
+.row .st { font-size: 13px; color: var(--muted); text-align: right; white-space: nowrap; }
+.row .x { background: none; border: 0; color: var(--bad); font-size: 13px; text-decoration: underline; padding: 0; display: block; margin-left: auto; }
+details.add { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 20px; }
+details.add summary { cursor: pointer; font-weight: 600; }
+.form { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+.form label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; font-weight: 500; }
+.form input, .form textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; width: 100%; }
+.form textarea { min-height: 70px; resize: vertical; }
+@media (max-width: 380px) { .def { font-size: 20px; } .letter { width: 84px; height: 84px; font-size: 46px; } }
+@media (prefers-reduced-motion: no-preference) { .card { animation: in .18s ease-out; } @keyframes in { from { opacity: .4; transform: translateY(4px); } to { opacity: 1; transform: none; } } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script src="words.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Utilidades ---------- */
+  var MIN = 60000, DAY = 86400000;
+  var LETTERS = "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ".split("");
+  function esc(x) { return String(x).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function dayNum(ts) { return Math.floor((ts - new Date(ts).getTimezoneOffset() * MIN) / DAY); }
+  // Mayúsculas, sin tildes ni espacios; la Ñ se conserva.
+  function norm(s) {
+    return String(s).toUpperCase().replace(/Ñ/g, "\u0001").normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/\u0001/g, "Ñ").replace(/[^A-ZÑ]/g, "");
+  }
+  function lev(a, b) {
+    if (Math.abs(a.length - b.length) > 1) return 9;
+    var p = [], i, j;
+    for (j = 0; j <= b.length; j++) p[j] = j;
+    for (i = 1; i <= a.length; i++) {
+      var prev = p[0]; p[0] = i;
+      for (j = 1; j <= b.length; j++) { var t = p[j]; p[j] = Math.min(p[j] + 1, p[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = t; }
+    }
+    return p[b.length];
+  }
+
+  /* ---------- Mazo ---------- */
+  function mk(id, l, w, d, k, n) { var alts = w.split("/").map(function (x) { return x.trim(); }).filter(Boolean); return { id: id, l: l, w: alts[0], alts: alts, d: d, k: k, n: n || 1 }; }
+  var perLetter = {}, usedIds = {};
+  var BUILTIN = (window.WORDS || []).map(function (e) {
+    var n = e[3] || 1, key = e[0] + n;
+    var k = perLetter[key] = (perLetter[key] || 0) + 1;
+    var id = norm(e[1].split("/")[0]);
+    while (usedIds[id]) id += "2";
+    usedIds[id] = 1;
+    // Las difíciles se van intercalando de a poco entre las básicas.
+    return mk(id, e[0], e[1], e[2], n === 2 ? k * 2.5 + 0.5 : k, n);
+  });
+
+  /* ---------- Estado y guardado ---------- */
+  var LS = "letra-a-letra:v1";
+  function fresh() { return { cards: {}, custom: [], cfg: { newPerDay: 20, letra: "", nivel: 0 }, daily: { day: 0, newDone: 0 }, log: {}, savedAt: 0 }; }
+  function normS(r) { var o = Object.assign(fresh(), r || {}); o.cfg = Object.assign({ newPerDay: 20, letra: "", nivel: 0 }, o.cfg); return o; }
+  var S = fresh();
+  try { var raw = localStorage.getItem(LS); if (raw) S = normS(JSON.parse(raw)); } catch (err) {}
+
+  /* ---------- Sesión con GitHub (gist privado) ---------- */
+  var GK = "letra-a-letra:gh", GIST_DESC = "Letra a Letra - progreso", GIST_FILE = "letra-a-letra.json";
+  var gh = { token: "", user: "", gist: "" };
+  try { var gr = localStorage.getItem(GK); if (gr) gh = Object.assign(gh, JSON.parse(gr)); } catch (err) {}
+  var syncMsg = "", ghErr = "", ghBusy = false, wtimer = null, writing = false, pending = false;
+  function ghSave() { try { localStorage.setItem(GK, JSON.stringify(gh)); } catch (err) {} }
+  function api(path, method, body) {
+    var hd = { "Authorization": "Bearer " + gh.token, "Accept": "application/vnd.github+json" };
+    if (body) hd["Content-Type"] = "application/json";
+    return fetch("https://api.github.com" + path, { method: method || "GET", headers: hd, body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) { if (!r.ok) { var e = new Error("http " + r.status); e.status = r.status; throw e; } return r.json(); });
+  }
+  function failMsg(err) { return err && err.status === 401 ? "GitHub ya no acepta el token. Volvé a conectar la cuenta." : "No se pudo sincronizar. Tu progreso sigue guardado en este navegador."; }
+  function note() { var n = document.getElementById("syncnote"); if (n) n.textContent = syncMsg; }
+  function save() {
+    S.savedAt = Date.now();
+    try { localStorage.setItem(LS, JSON.stringify(S)); } catch (err) {}
+    if (gh.token && gh.gist) { clearTimeout(wtimer); wtimer = setTimeout(push, 1500); }
+  }
+  async function push() {
+    if (writing) { pending = true; return; }
+    writing = true;
+    try { var files = {}; files[GIST_FILE] = { content: JSON.stringify(S) }; await api("/gists/" + gh.gist, "PATCH", { files: files }); syncMsg = "Guardado en tu cuenta de GitHub."; }
+    catch (err) { syncMsg = failMsg(err); }
+    writing = false; note();
+    if (pending) { pending = false; push(); }
+  }
+  async function pull() {
+    var g = await api("/gists/" + gh.gist), f = g.files && g.files[GIST_FILE];
+    if (!f || !f.content) { push(); return; }
+    var remote = normS(JSON.parse(f.content));
+    if ((remote.savedAt || 0) > (S.savedAt || 0)) {
+      S = remote; try { localStorage.setItem(LS, JSON.stringify(S)); } catch (err) {}
+      cur = null; phase = "ask"; typed = ""; result = null;
+    } else if ((S.savedAt || 0) > (remote.savedAt || 0)) push();
+  }
+  async function connect(token) {
+    token = (token || "").trim();
+    if (!token) { ghErr = "Pegá el token que creaste en GitHub."; render(); return; }
+    ghErr = ""; ghBusy = true; render();
+    try {
+      gh = { token: token, user: "", gist: "" };
+      var me = await api("/user"); gh.user = me.login;
+      var found = null;
+      for (var page = 1; page <= 3 && !found; page++) {
+        var list = await api("/gists?per_page=100&page=" + page);
+        found = list.filter(function (g) { return g.description === GIST_DESC && g.files && g.files[GIST_FILE]; })[0];
+        if (list.length < 100) break;
+      }
+      if (found) { gh.gist = found.id; await pull(); }
+      else { var files = {}; files[GIST_FILE] = { content: JSON.stringify(S) }; var g = await api("/gists", "POST", { description: GIST_DESC, public: false, files: files }); gh.gist = g.id; }
+      ghSave(); syncMsg = "Conectado como " + gh.user + ". Tu progreso se guarda en tu cuenta.";
+    } catch (err) {
+      gh = { token: "", user: "", gist: "" }; ghSave();
+      ghErr = err.status === 401 ? "GitHub no aceptó el token. Revisá que lo hayas copiado completo."
+        : err.status === 403 || err.status === 404 ? "El token no tiene permiso para gists. Creá uno nuevo con el permiso gist marcado."
+        : "No se pudo conectar con GitHub. Probá de nuevo en un momento.";
+    }
+    ghBusy = false; render();
+  }
+  function disconnect() { gh = { token: "", user: "", gist: "" }; ghSave(); syncMsg = ""; ghErr = ""; render(); }
+  async function startupPull() {
+    if (!gh.token || !gh.gist) return;
+    try { await pull(); syncMsg = "Conectado como " + gh.user + ". Tu progreso se guarda en tu cuenta."; render(); }
+    catch (err) { syncMsg = failMsg(err); note(); }
+  }
+  function exportJson() {
+    var blob = new Blob([JSON.stringify(S)], { type: "application/json" }), a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "letra-a-letra-progreso.json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+  function importJson(file) {
+    var r = new FileReader();
+    r.onload = function () {
+      try { S = normS(JSON.parse(r.result)); save(); cur = null; phase = "ask"; ghErr = ""; syncMsg = "Progreso importado."; }
+      catch (err) { ghErr = "Ese archivo no es una copia de seguridad válida."; }
+      render();
+    };
+    r.readAsText(file);
+  }
+
+  /* ---------- Tarjetas ---------- */
+  var byId = {}, ORDER = [];
+  function rebuild() {
+    byId = {};
+    var all = BUILTIN.concat(S.custom.map(function (c) { return mk(c.id, c.l, c.w, c.d, 0); }));
+    all.forEach(function (d) { byId[d.id] = d; });
+    // Las nuevas salen alternando letras: la 1ª de la A, la 1ª de la B... y así.
+    ORDER = all.slice().sort(function (a, b) { return a.k - b.k || LETTERS.indexOf(a.l) - LETTERS.indexOf(b.l); });
+  }
+  rebuild();
+  function cs(id) { return S.cards[id] || { st: "new", ease: 2.5, ivl: 0, reps: 0, lapses: 0, step: 0 }; }
+  function ensureDaily() { var t = dayNum(Date.now()); if (S.daily.day !== t) S.daily = { day: t, newDone: 0 }; }
+
+  /* ---------- Planificador (estilo Anki) ---------- */
+  function schedule(c, r, now) {
+    var n = Object.assign({}, c), today = dayNum(now);
+    function grad(ivl) { n.st = "review"; n.ivl = ivl; n.dueDay = today + ivl; n.due = 0; n.step = 0; }
+    if (c.st === "new" || c.st === "learn") {
+      var st = c.st === "new" ? 0 : (c.step || 0);
+      if (r === 1) { n.st = "learn"; n.step = 0; n.due = now + MIN; }
+      else if (r === 2) { n.st = "learn"; n.step = st; n.due = now + (st === 0 ? 6 : 10) * MIN; }
+      else if (r === 3) { if (st === 0) { n.st = "learn"; n.step = 1; n.due = now + 10 * MIN; } else grad(1); }
+      else grad(4);
+    } else if (c.st === "relearn") {
+      if (r <= 2) n.due = now + 10 * MIN;
+      else if (r === 3) grad(Math.max(1, c.ivl));
+      else grad(Math.max(2, c.ivl + 1));
+    } else {
+      if (r === 1) { n.lapses = (c.lapses || 0) + 1; n.ease = Math.max(1.3, c.ease - 0.2); n.ivl = Math.max(1, Math.round(c.ivl * 0.5)); n.st = "relearn"; n.due = now + 10 * MIN; }
+      else if (r === 2) { n.ease = Math.max(1.3, c.ease - 0.15); n.ivl = Math.max(c.ivl + 1, Math.round(c.ivl * 1.2)); n.dueDay = today + n.ivl; }
+      else if (r === 3) { n.ivl = Math.max(c.ivl + 1, Math.round(c.ivl * c.ease)); n.dueDay = today + n.ivl; }
+      else { n.ease = c.ease + 0.15; n.ivl = Math.max(c.ivl + 1, Math.round(c.ivl * c.ease * 1.3)); n.dueDay = today + n.ivl; }
+    }
+    n.reps = (c.reps || 0) + 1;
+    return n;
+  }
+  function fmtDays(d) {
+    if (d < 30) return d + " d";
+    if (d < 365) return (d / 30).toFixed(1).replace(".0", "").replace(".", ",") + " mes";
+    return (d / 365).toFixed(1).replace(".0", "").replace(".", ",") + " año";
+  }
+  function label(c, r) {
+    var now = Date.now(), n = schedule(c, r, now);
+    if (n.st === "review") return fmtDays(n.ivl);
+    return Math.max(1, Math.round((n.due - now) / MIN)) + " min";
+  }
+
+  /* ---------- Cola ---------- */
+  var tab = "study", cur = null, phase = "ask", typed = "", result = null, typo = false, ahead = false, undo = null;
+  var confirmReset = false, formErr = "", q = "", deckLetter = "", deckLevel = 0, deckLimit = 150;
+  function inFilter(d) { return (!S.cfg.letra || d.l === S.cfg.letra) && (!S.cfg.nivel || d.n === S.cfg.nivel); }
+  function queues() {
+    ensureDaily();
+    var now = Date.now(), today = dayNum(now), learn = [], rev = [], nw = [];
+    ORDER.forEach(function (d) {
+      if (!inFilter(d)) return;
+      var c = cs(d.id);
+      if (c.st === "new") nw.push(d);
+      else if (c.st === "review") { if (c.dueDay <= today) rev.push(d); }
+      else learn.push(d);
+    });
+    learn.sort(function (a, b) { return cs(a.id).due - cs(b.id).due; });
+    rev.sort(function (a, b) { return cs(a.id).dueDay - cs(b.id).dueDay; });
+    var newLeft = Math.max(0, S.cfg.newPerDay - S.daily.newDone);
+    return { learn: learn, rev: rev, nw: nw.slice(0, newLeft), now: now };
+  }
+  function pickNext() {
+    var qq = queues();
+    var due = qq.learn.filter(function (d) { return ahead || cs(d.id).due <= qq.now; });
+    if (due.length) return due[0].id;
+    if (qq.rev.length) return qq.rev[0].id;
+    if (qq.nw.length) return qq.nw[0].id;
+    return null;
+  }
+
+  function check(skip) {
+    var d = byId[cur], inp = document.getElementById("ans");
+    if (inp) typed = inp.value;
+    var t = norm(typed);
+    if (!skip && !t) { if (inp) inp.focus(); return; }
+    var ok = false, near = false;
+    if (!skip) d.alts.forEach(function (a) {
+      var w = norm(a);
+      if (t === w) ok = true;
+      else if (w.length >= 6 && lev(t, w) === 1) { ok = true; near = true; }
+    });
+    result = { ok: ok, near: near && !d.alts.some(function (a) { return norm(a) === t; }), skip: !!skip };
+    typo = false; phase = "result"; render();
+  }
+  function rate(r) {
+    var id = cur, c = cs(id), now = Date.now();
+    ensureDaily();
+    var t = S.daily.day;
+    undo = { id: id, prev: S.cards[id] ? JSON.parse(JSON.stringify(S.cards[id])) : null, daily: Object.assign({}, S.daily), log: S.log[t] ? Object.assign({}, S.log[t]) : null, day: t, typed: typed, result: result };
+    if (c.st === "new") S.daily.newDone++;
+    S.cards[id] = schedule(c, r, now);
+    var L = S.log[t] || (S.log[t] = { n: 0, ok: 0 });
+    L.n++; if (r >= 3) L.ok++;
+    save();
+    cur = null; phase = "ask"; typed = ""; result = null;
+    render();
+  }
+  function doUndo() {
+    if (!undo) return;
+    if (undo.prev) S.cards[undo.id] = undo.prev; else delete S.cards[undo.id];
+    S.daily = undo.daily;
+    if (undo.log) S.log[undo.day] = undo.log; else delete S.log[undo.day];
+    cur = undo.id; typed = undo.typed; result = undo.result; phase = "result"; undo = null;
+    save(); render();
+  }
+
+  /* ---------- Vistas ---------- */
+  var app = document.getElementById("app");
+  function head(qq, kind) {
+    var cls = function (k) { return kind === k ? " on" : ""; };
+    return '<header class="top"><h1 class="brand">Letra <span>a</span> Letra</h1>' +
+      '<button class="acct' + (gh.token ? " on" : "") + '" data-tab="stats">' + (gh.token ? "● " + esc(gh.user) : "Iniciar sesión") + "</button>" +
+      '<div class="counts" aria-label="Pendientes de hoy">' +
+      '<span class="c-new' + cls("new") + '"><b>' + qq.nw.length + "</b> nuevas</span>" +
+      '<span class="c-learn' + cls("learn") + '"><b>' + qq.learn.length + "</b> aprender</span>" +
+      '<span class="c-rev' + cls("review") + '"><b>' + qq.rev.length + "</b> repasar</span></div></header>" +
+      '<nav class="tabs" role="tablist">' +
+      [["study", "Jugar"], ["deck", "Palabras"], ["stats", "Progreso"]].map(function (t) {
+        return '<button class="tab" role="tab" data-tab="' + t[0] + '" aria-selected="' + (tab === t[0]) + '">' + t[1] + "</button>";
+      }).join("") + "</nav>";
+  }
+  function levelSelect(id, val) {
+    return '<label class="filter">Nivel <select id="' + id + '">' + [[0, "Todos"], [1, "Básico"], [2, "Difícil"]].map(function (x) {
+      return '<option value="' + x[0] + '"' + (val === x[0] ? " selected" : "") + ">" + x[1] + "</option>"; }).join("") + "</select></label>";
+  }
+  function filters() { return '<div class="filters">' + letterSelect("flt", S.cfg.letra) + levelSelect("nflt", S.cfg.nivel) + "</div>"; }
+  function letterSelect(id, val) {
+    return '<label class="filter">Letra <select id="' + id + '"><option value="">Todas</option>' +
+      LETTERS.map(function (l) { return "<option" + (val === l ? " selected" : "") + ">" + l + "</option>"; }).join("") + "</select></label>";
+  }
+
+  function viewStudy() {
+    if (cur && (!byId[cur] || !inFilter(byId[cur]))) { cur = null; phase = "ask"; }
+    if (!cur) { cur = pickNext(); phase = "ask"; typed = ""; result = null; }
+    var qq = queues(), html;
+    if (!cur) {
+      var nextLearn = qq.learn.length ? Math.min.apply(null, qq.learn.map(function (d) { return cs(d.id).due; })) : 0;
+      var n = (S.log[S.daily.day] || { n: 0 }).n;
+      return head(qq, "") + filters() + '<section class="card done"><h2>' + (n ? "¡Listo por ahora!" : "No hay palabras para hoy") + "</h2>" +
+        "<p>" + (n ? "Hoy respondiste " + n + (n === 1 ? " palabra." : " palabras.") + " Volvé mañana para repasar." : "Elegí otra letra o aumentá las palabras nuevas por día en Progreso.") + "</p>" +
+        (nextLearn ? "<p>Una palabra vuelve en " + Math.max(1, Math.ceil((nextLearn - qq.now) / MIN)) + " min.</p><button class=\"btn-ghost\" data-act=\"ahead\">Jugarla ahora</button>" : "") +
+        '<button class="btn-ghost" data-act="more">Sumar 10 palabras nuevas más</button>' +
+        (undo ? '<button class="undo" data-act="undo">Deshacer la última respuesta</button>' : "") + "</section>";
+    }
+    ahead = false;
+    var d = byId[cur], c = cs(cur);
+    var kind = c.st === "new" ? "new" : c.st === "review" ? "review" : "learn";
+    var lc = phase === "result" ? (result.ok ? " ok" : " bad") : "";
+    html = head(qq, kind) + filters() + '<section class="card">' +
+      '<div class="letter' + lc + '" aria-label="Letra ' + d.l + '">' + d.l + "</div>" +
+      (d.n === 2 ? '<span class="lvl">Difícil</span>' : "") +
+      '<p class="def">' + esc(d.d) + "</p>";
+    if (phase === "ask") {
+      html += '<form class="ansrow" id="ansform" autocomplete="off"><input id="ans" type="text" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="Tu respuesta" aria-label="Tu respuesta">' +
+        '<button class="btn-main" type="submit">OK</button></form>' +
+        '<button class="btn-link" data-act="skip">No la sé</button>';
+    } else {
+      var others = d.alts.slice(1);
+      html += '<div class="verdict">';
+      if (result.ok) html += '<span class="v ok">' + (result.near ? "¡Bien! Ojo, se escribe así:" : "¡Correcto!") + "</span>";
+      else html += '<span class="v bad">' + (result.skip ? "La respuesta era" : "No, era") + "</span>";
+      html += '<span class="word">' + esc(d.w) + "</span>";
+      if (!result.ok && !result.skip && typed.trim()) html += '<span class="typed">' + esc(typed.trim().toUpperCase()) + "</span>";
+      if (others.length) html += '<span class="alts">También vale: ' + esc(others.join(", ")) + "</span>";
+      html += "</div>";
+      if (result.ok || typo) {
+        html += '<div class="rate" role="group" aria-label="¿Cuánto te costó?">' +
+          [[2, "Difícil"], [3, "Bien"], [4, "Fácil"]].map(function (x) {
+            return '<button class="rb r' + x[0] + '" data-rate="' + x[0] + '"><small>' + label(c, x[0]) + "</small>" + x[1] + "</button>";
+          }).join("") + '</div><p class="hint">Enter = Bien</p>';
+      } else {
+        html += '<div class="rate one"><button class="rb r1" data-rate="1"><small>vuelve en ' + label(c, 1) + "</small>Seguir</button></div>" +
+          (result.skip ? "" : '<button class="btn-link" data-act="typo">La sabía, me equivoqué al escribir</button>');
+      }
+    }
+    html += "</section>" + (undo ? '<button class="undo" data-act="undo">Deshacer la última respuesta</button>' : "");
+    return html;
+  }
+
+  function stateLabel(d) {
+    var c = cs(d.id), today = dayNum(Date.now());
+    if (c.st === "new") return "Nueva";
+    if (c.st !== "review") return "Aprendiendo";
+    var k = c.dueDay - today;
+    return k <= 0 ? "Repasar hoy" : k === 1 ? "Mañana" : "En " + fmtDays(k);
+  }
+  function viewDeck() {
+    var qq = queues(), nq = norm(q), all = ORDER.slice().sort(function (a, b) { return LETTERS.indexOf(a.l) - LETTERS.indexOf(b.l) || a.k - b.k; });
+    var list = all.filter(function (d) {
+      if (deckLetter && d.l !== deckLetter) return false;
+      if (deckLevel && d.n !== deckLevel) return false;
+      if (!nq) return true;
+      return cs(d.id).st !== "new" && d.alts.some(function (a) { return norm(a).indexOf(nq) > -1; });
+    });
+    var seen = all.filter(function (d) { return cs(d.id).st !== "new"; }).length;
+    var html = head(qq, "") +
+      '<p class="sync" style="margin:0">' + all.length + " palabras en total, ya viste " + seen + ". Las que todavía no jugaste aparecen tapadas.</p>" +
+      '<input class="search" id="q" type="search" placeholder="Buscar entre las que ya viste" value="' + esc(q) + '"><div class="filters">' + letterSelect("dflt", deckLetter) + levelSelect("dnflt", deckLevel) + "</div>" +
+      '<section class="list">' +
+      (list.length ? list.slice(0, deckLimit).map(function (d) {
+        var hid = cs(d.id).st === "new";
+        return '<div class="row"><span class="l">' + d.l + "</span><div>" +
+          '<div class="w' + (hid ? " hid" : "") + '">' + (hid ? "• • • • •" : esc(d.alts.join(" / "))) + (d.n === 2 ? ' <span class="lvl sm">Difícil</span>' : "") + "</div>" +
+          '<div class="d">' + esc(d.d) + "</div></div>" +
+          '<span class="st">' + stateLabel(d) + (d.id[0] === "u" && d.id[1] === "_" ? '<button class="x" data-del="' + esc(d.id) + '">Borrar</button>' : "") + "</span></div>";
+      }).join("") : '<p class="sync" style="padding:12px 0">No hay palabras que coincidan.</p>') + "</section>" +
+      (list.length > deckLimit ? '<button class="btn-ghost" data-act="deckmore">Mostrar más (' + (list.length - deckLimit) + ")</button>" : "");
+    html += '<details class="add"' + (formErr ? " open" : "") + "><summary>Agregar tu propia palabra</summary><form class=\"form\" id=\"addform\">" +
+      '<label>Palabra<input id="f-w" autocomplete="off" placeholder="Ej.: MATE (si vale otra forma, separala con /)"></label>' +
+      '<label>Definición<textarea id="f-d" placeholder="Infusión de yerba que se toma con bombilla"></textarea></label>' +
+      (formErr ? '<p class="err">' + esc(formErr) + "</p>" : "") +
+      '<button class="btn-main full" type="submit">Agregar</button></form></details>';
+    return html;
+  }
+
+  function bars(vals, oks, labels, todayIdx) {
+    var max = Math.max.apply(null, vals.concat([1]));
+    return '<div class="bars">' + vals.map(function (v, i) {
+      var h = v ? Math.max(4, Math.round(v / max * 84)) : 0, okh = oks && v ? Math.round(oks[i] / v * 100) : 0;
+      return '<div class="bar"><span class="v">' + (v || "") + '</span><div class="col" style="height:' + h + 'px">' + (oks ? '<i style="height:' + okh + '%"></i>' : "") + "</div></div>";
+    }).join("") + '</div><div class="axis">' + labels.map(function (l, i) { return '<span class="' + (i === todayIdx ? "today" : "") + '">' + l + "</span>"; }).join("") + "</div>";
+  }
+  function accountPanel() {
+    var html = '<section class="panel"><h3>Cuenta y copia de seguridad</h3>';
+    if (gh.token) {
+      html += '<p style="margin:0">Sesión iniciada como <b>' + esc(gh.user) + "</b>. Tu progreso se guarda en un gist privado de tu cuenta de GitHub, así lo ves igual en el celular y en la compu.</p>" +
+        '<div class="btns"><button class="btn-ghost sm" data-act="gh-out">Cerrar sesión</button></div>';
+    } else {
+      html += '<p style="margin:0">Iniciá sesión con GitHub para guardar el progreso en tu cuenta y usarlo en cualquier dispositivo.</p><ol>' +
+        '<li><a href="https://github.com/settings/tokens/new?scopes=gist&amp;description=Letra%20a%20Letra" target="_blank" rel="noopener">Creá un token</a> en GitHub con el permiso <b>gist</b> marcado.</li>' +
+        "<li>Copialo y pegalo acá.</li></ol>" +
+        '<div class="acct-row"><input id="gh-token" type="password" autocomplete="off" placeholder="ghp_..." aria-label="Token de GitHub"><button class="btn-ghost" data-act="gh-in"' + (ghBusy ? " disabled" : "") + ">" + (ghBusy ? "Conectando..." : "Conectar") + "</button></div>" +
+        '<p class="sync">El token queda solo en este navegador. La app lo usa únicamente para leer y escribir un gist privado con tu progreso.</p>';
+    }
+    if (ghErr) html += '<p class="err">' + esc(ghErr) + "</p>";
+    html += '<p class="sync" id="syncnote">' + esc(syncMsg) + "</p>" +
+      '<div class="btns"><button class="btn-ghost sm" data-act="export">Descargar copia</button><button class="btn-ghost sm" data-act="import">Cargar copia</button>' +
+      '<input id="imp" type="file" accept="application/json,.json" hidden></div></section>';
+    return html;
+  }
+  function viewStats() {
+    var qq = queues(), now = Date.now(), today = dayNum(now), cards = ORDER;
+    var nNew = 0, nLearn = 0, nYoung = 0, nMature = 0, hardT = 0, hardL = 0, fc = [], i, per = {};
+    for (i = 0; i < 14; i++) fc.push(0);
+    LETTERS.forEach(function (l) { per[l] = { t: 0, y: 0, m: 0 }; });
+    cards.forEach(function (d) {
+      var c = cs(d.id), p = per[d.l] || (per[d.l] = { t: 0, y: 0, m: 0 });
+      p.t++;
+      if (c.st === "new") nNew++;
+      else if (c.st === "review") { if (c.ivl >= 21) { nMature++; p.m++; } else { nYoung++; p.y++; } var k = Math.max(0, c.dueDay - today); if (k < 14) fc[k]++; }
+      else { nLearn++; p.y++; }
+      if (d.n === 2) { hardT++; if (c.st === "review") hardL++; }
+    });
+    var tot = cards.length || 1, L = S.log[today] || { n: 0, ok: 0 };
+    var streak = 0, dd = today;
+    if (!(S.log[dd] && S.log[dd].n)) dd--;
+    while (S.log[dd] && S.log[dd].n) { streak++; dd--; }
+    var hist = [], histOk = [], histLbl = [], fcLbl = [];
+    for (i = 13; i >= 0; i--) { var l = S.log[today - i] || { n: 0, ok: 0 }; hist.push(l.n); histOk.push(l.ok); histLbl.push(new Date(now - i * DAY).getDate()); }
+    for (i = 0; i < 14; i++) fcLbl.push(new Date(now + i * DAY).getDate());
+    var seg = function (n, c) { return n ? '<i style="width:' + (n / tot * 100) + "%;background:var(" + c + ')"></i>' : ""; };
+    var grid = LETTERS.map(function (l) {
+      var p = per[l], pm = p.t ? p.m / p.t * 100 : 0, py = p.t ? (p.m + p.y) / p.t * 100 : 0;
+      return '<button class="lg" data-letter="' + l + '" title="Jugar solo la ' + l + '"><span class="ring" style="--p:' + pm.toFixed(1) + ";--q:" + py.toFixed(1) + '"><b>' + l + "</b></span><small>" + (p.m + p.y) + "/" + p.t + "</small></button>";
+    }).join("");
+    return head(qq, "") +
+      '<div class="stats"><div class="stat"><b>' + L.n + "</b><span>respondidas hoy" + (L.n ? ", " + Math.round(L.ok / L.n * 100) + "% bien" : "") + "</span></div>" +
+      '<div class="stat"><b>' + streak + "</b><span>" + (streak === 1 ? "día seguido" : "días seguidos") + "</span></div>" +
+      '<div class="stat"><b>' + (nYoung + nMature) + " / " + cards.length + "</b><span>palabras aprendidas</span></div>" +
+      '<div class="stat"><b>' + hardL + " / " + hardT + "</b><span>difíciles aprendidas</span></div></div>" +
+      '<section class="panel"><h3>Progreso por letra</h3><div class="lgrid">' + grid + "</div>" +
+      '<p class="sync" style="margin:0">Verde: palabras que ya dominás (vuelven en 21 días o más). Azul: las que estás aprendiendo. Tocá una letra para jugar solo esa.</p></section>' +
+      '<section class="panel"><h3>Estado de las palabras</h3><div class="stack">' + seg(nNew, "--line") + seg(nLearn, "--learn") + seg(nYoung, "--young") + seg(nMature, "--mature") + "</div>" +
+      '<div class="legend"><span style="--c:var(--line)">Sin jugar ' + nNew + '</span><span style="--c:var(--learn)">Aprendiendo ' + nLearn + '</span><span style="--c:var(--young)">Jóvenes ' + nYoung + '</span><span style="--c:var(--mature)">Dominadas ' + nMature + "</span></div></section>" +
+      '<section class="panel"><h3>Repasos de los próximos 14 días</h3>' + bars(fc, null, fcLbl, 0) + '<p class="sync" style="margin:0">Número de día del mes. Hoy incluye lo atrasado.</p></section>' +
+      '<section class="panel"><h3>Respondidas en los últimos 14 días</h3>' + bars(hist, histOk, histLbl, 13) + '<p class="sync" style="margin:0">La parte verde son las que acertaste.</p></section>' +
+      accountPanel() +
+      '<section class="panel"><h3>Ajustes</h3><div class="setrow"><label for="npd">Palabras nuevas por día</label><input id="npd" type="number" min="0" max="200" value="' + S.cfg.newPerDay + '"></div>' +
+      '<div class="setrow"><span>Borrar todo el progreso</span>' +
+      (confirmReset ? '<span><button class="btn-danger" data-act="reset-yes">Sí, borrar</button> <button class="btn-ghost" data-act="reset-no">Cancelar</button></span>' : '<button class="btn-ghost" data-act="reset">Borrar</button>') + "</div></section>";
+  }
+
+  function render() {
+    var y = window.scrollY;
+    app.innerHTML = tab === "study" ? viewStudy() : tab === "deck" ? viewDeck() : viewStats();
+    if (tab === "study" && phase === "ask" && cur) { var a = document.getElementById("ans"); if (a) { a.value = typed; try { a.focus({ preventScroll: true }); } catch (e) { a.focus(); } } }
+    if (tab !== "study") window.scrollTo(0, y);
+  }
+
+  /* ---------- Eventos ---------- */
+  app.addEventListener("click", function (ev) {
+    var t = ev.target.closest("[data-tab],[data-act],[data-rate],[data-del],[data-letter]");
+    if (!t) return;
+    if (t.dataset.tab) { tab = t.dataset.tab; render(); window.scrollTo(0, 0); return; }
+    if (t.dataset.rate) { rate(+t.dataset.rate); return; }
+    if (t.dataset.letter) { S.cfg.letra = t.dataset.letter; cur = null; save(); tab = "study"; render(); window.scrollTo(0, 0); return; }
+    if (t.dataset.del) { S.custom = S.custom.filter(function (d) { return d.id !== t.dataset.del; }); delete S.cards[t.dataset.del]; if (cur === t.dataset.del) cur = null; rebuild(); save(); render(); return; }
+    var a = t.dataset.act;
+    if (a === "skip") check(true);
+    else if (a === "typo") { typo = true; render(); }
+    else if (a === "undo") doUndo();
+    else if (a === "ahead") { ahead = true; cur = null; render(); }
+    else if (a === "more") { ensureDaily(); S.daily.newDone = Math.max(0, S.daily.newDone - 10); if (S.daily.newDone === 0 && S.cfg.newPerDay === 0) S.cfg.newPerDay = 10; save(); render(); }
+    else if (a === "deckmore") { deckLimit += 300; render(); }
+    else if (a === "gh-in") connect((document.getElementById("gh-token") || {}).value);
+    else if (a === "gh-out") disconnect();
+    else if (a === "export") exportJson();
+    else if (a === "import") document.getElementById("imp").click();
+    else if (a === "reset") { confirmReset = true; render(); }
+    else if (a === "reset-no") { confirmReset = false; render(); }
+    else if (a === "reset-yes") { var cfg = S.cfg, custom = S.custom; S = fresh(); S.cfg = cfg; S.custom = custom; confirmReset = false; cur = null; phase = "ask"; undo = null; save(); render(); }
+  });
+  app.addEventListener("change", function (ev) {
+    var id = ev.target.id;
+    if (id === "imp" && ev.target.files[0]) { importJson(ev.target.files[0]); return; }
+    if (id === "npd") { S.cfg.newPerDay = Math.max(0, Math.min(200, parseInt(ev.target.value, 10) || 0)); save(); render(); }
+    if (id === "flt") { S.cfg.letra = ev.target.value; cur = null; save(); render(); }
+    if (id === "nflt") { S.cfg.nivel = +ev.target.value; cur = null; save(); render(); }
+    if (id === "dnflt") { deckLevel = +ev.target.value; deckLimit = 150; render(); }
+    if (id === "dflt") { deckLetter = ev.target.value; deckLimit = 150; render(); }
+  });
+  app.addEventListener("input", function (ev) {
+    if (ev.target.id === "ans") typed = ev.target.value;
+    if (ev.target.id === "q") {
+      q = ev.target.value; deckLimit = 150; var pos = ev.target.selectionStart; render();
+      var s = document.getElementById("q"); if (s) { s.focus(); try { s.setSelectionRange(pos, pos); } catch (e) {} }
+    }
+  });
+  app.addEventListener("keydown", function (ev) {
+    if (ev.target.id === "gh-token" && ev.key === "Enter") { ev.preventDefault(); connect(ev.target.value); }
+  });
+  app.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (ev.target.id === "ansform") { check(false); return; }
+    if (ev.target.id !== "addform") return;
+    var w = document.getElementById("f-w").value.trim(), d = document.getElementById("f-d").value.trim();
+    var first = norm(w.split("/")[0]);
+    if (!first) { formErr = "Escribí la palabra."; render(); return; }
+    if (!d) { formErr = "Escribí la definición."; render(); return; }
+    if (LETTERS.indexOf(first[0]) < 0) { formErr = "La palabra tiene que empezar con una letra."; render(); return; }
+    if (byId[first]) { formErr = "Esa palabra ya está en el juego."; render(); return; }
+    formErr = "";
+    S.custom.push({ id: "u_" + first, l: first[0], w: w.toUpperCase(), d: d });
+    rebuild(); save(); render();
+  });
+  document.addEventListener("keydown", function (ev) {
+    if (tab !== "study" || !cur || phase !== "result") return;
+    var tag = ev.target && ev.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+    if (ev.key === "Enter" || ev.key === " ") {
+      if (tag === "BUTTON") return;
+      ev.preventDefault();
+      rate(result.ok || typo ? 3 : 1);
+    } else if ((result.ok || typo) && "234".indexOf(ev.key) > -1 && ev.key) rate(+ev.key);
+  });
+  setInterval(function () { if (tab === "study" && !cur) render(); }, 10000);
+
+  render();
+  startupPull();
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible" && phase === "ask" && !typed) startupPull(); });
+  if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) navigator.serviceWorker.register("sw.js").catch(function () {});
+})();
+</script>
+</body>
+</html>
