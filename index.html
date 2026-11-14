@@ -159,6 +159,8 @@ details.add summary { cursor: pointer; font-weight: 600; }
 .form input, .form textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; width: 100%; }
 .form textarea { min-height: 70px; resize: vertical; }
 @media (max-width: 380px) { .def { font-size: 20px; } .letter { width: 84px; height: 84px; font-size: 46px; } }
+.confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 50; }
+@media (prefers-reduced-motion: no-preference) { .letter.bad { animation: shake .4s ease-in-out; } @keyframes shake { 20%, 60% { transform: translateX(-7px); } 40%, 80% { transform: translateX(7px); } } .letter.ok { animation: popin .35s ease-out; } @keyframes popin { 0% { transform: scale(.85); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } } }
 @media (prefers-reduced-motion: no-preference) { .card { animation: in .18s ease-out; } @keyframes in { from { opacity: .4; transform: translateY(4px); } to { opacity: 1; transform: none; } } }
 </style>
 </head>
@@ -189,6 +191,71 @@ details.add summary { cursor: pointer; font-weight: 600; }
       for (j = 1; j <= b.length; j++) { var t = p[j]; p[j] = Math.min(p[j] + 1, p[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = t; }
     }
     return p[b.length];
+  }
+
+  /* ---------- Sonidos y confeti ---------- */
+  var actx = null;
+  function ac() {
+    try {
+      if (!actx) { var C = window.AudioContext || window.webkitAudioContext; if (!C) return null; actx = new C(); }
+      if (actx.state === "suspended") actx.resume();
+      return actx;
+    } catch (e) { return null; }
+  }
+  function soundOn() { return S.cfg.sonido !== false; }
+  function tone(ctx, f, t0, dur, type, vol, f2) {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t0);
+    if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(ctx.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+  }
+  function pop(ctx, t0, vol) {
+    // Estallido corto de ruido filtrado, como un lanzador de papelitos.
+    var len = Math.floor(ctx.sampleRate * 0.18), buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+    var n = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    n.buffer = buf; f.type = "highpass"; f.frequency.value = 1800; g.gain.value = vol;
+    n.connect(f); f.connect(g); g.connect(ctx.destination); n.start(t0);
+  }
+  function playOk() {
+    if (!soundOn()) return; var ctx = ac(); if (!ctx) return; var t = ctx.currentTime + 0.01;
+    pop(ctx, t, 0.5);
+    [523.25, 659.25, 783.99, 1046.5].forEach(function (f, i) { tone(ctx, f, t + 0.05 + i * 0.075, 0.28, "triangle", 0.22); });
+    tone(ctx, 2093, t + 0.36, 0.25, "sine", 0.06);
+  }
+  function playBad() {
+    if (!soundOn()) return; var ctx = ac(); if (!ctx) return; var t = ctx.currentTime + 0.01;
+    tone(ctx, 311, t, 0.18, "square", 0.07, 290);
+    tone(ctx, 233, t + 0.17, 0.38, "square", 0.07, 175);
+    try { if (navigator.vibrate) navigator.vibrate(120); } catch (e) {}
+  }
+  function confetti(fromEl) {
+    try { if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return; } catch (e) {}
+    var cv = document.createElement("canvas"), dpr = window.devicePixelRatio || 1, W = window.innerWidth, H = window.innerHeight;
+    cv.className = "confetti"; cv.width = W * dpr; cv.height = H * dpr;
+    document.body.appendChild(cv);
+    var c = cv.getContext("2d"); c.scale(dpr, dpr);
+    var r = fromEl ? fromEl.getBoundingClientRect() : { left: W / 2, top: H / 3, width: 0, height: 0 };
+    var ox = r.left + r.width / 2, oy = r.top + r.height / 2;
+    var cols = ["#2457E6", "#1D6A39", "#F2B705", "#E2453C", "#9B5DE5", "#00B4D8"], P = [];
+    for (var i = 0; i < 110; i++) {
+      var a = Math.random() * Math.PI * 2, v = 4 + Math.random() * 8;
+      P.push({ x: ox, y: oy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 5, w: 5 + Math.random() * 6, h: 3 + Math.random() * 4,
+        r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.4, c: cols[i % cols.length] });
+    }
+    var start = performance.now();
+    (function frame(now) {
+      var t = now - start; c.clearRect(0, 0, W, H);
+      P.forEach(function (p) {
+        p.vy += 0.28; p.vx *= 0.985; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+        c.save(); c.globalAlpha = Math.max(0, 1 - t / 1600); c.translate(p.x, p.y); c.rotate(p.r);
+        c.fillStyle = p.c; c.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); c.restore();
+      });
+      if (t < 1600) requestAnimationFrame(frame); else cv.remove();
+    })(start);
   }
 
   /* ---------- Mazo ---------- */
@@ -387,6 +454,7 @@ details.add summary { cursor: pointer; font-weight: 600; }
     });
     result = { ok: ok, near: near && !d.alts.some(function (a) { return norm(a) === t; }), skip: !!skip };
     typo = false; phase = "result"; render();
+    if (result.ok) { playOk(); confetti(document.querySelector(".letter")); } else playBad();
   }
   function rate(r) {
     var id = cur, c = cs(id), now = Date.now();
@@ -592,6 +660,7 @@ details.add summary { cursor: pointer; font-weight: 600; }
       '<section class="panel"><h3>Respondidas en los últimos 14 días</h3>' + bars(hist, histOk, histLbl, 13) + '<p class="sync" style="margin:0">La parte verde son las que acertaste.</p></section>' +
       accountPanel() +
       '<section class="panel"><h3>Ajustes</h3><div class="setrow"><label for="npd">Palabras nuevas por día</label><input id="npd" type="number" min="0" max="200" value="' + S.cfg.newPerDay + '"></div>' +
+      '<div class="setrow"><label for="snd">Sonidos al acertar y al errar</label><input id="snd" type="checkbox"' + (S.cfg.sonido !== false ? " checked" : "") + ' style="width:22px;height:22px"></div>' +
       '<div class="setrow"><span>Borrar todo el progreso</span>' +
       (confirmReset ? '<span><button class="btn-danger" data-act="reset-yes">Sí, borrar</button> <button class="btn-ghost" data-act="reset-no">Cancelar</button></span>' : '<button class="btn-ghost" data-act="reset">Borrar</button>') + "</div></section>";
   }
@@ -632,6 +701,7 @@ details.add summary { cursor: pointer; font-weight: 600; }
     if (id === "imp" && ev.target.files[0]) { importJson(ev.target.files[0]); return; }
     if (id === "npd") { S.cfg.newPerDay = Math.max(0, Math.min(200, parseInt(ev.target.value, 10) || 0)); save(); render(); }
     if (id === "flt") { S.cfg.letra = ev.target.value; cur = null; save(); render(); }
+    if (id === "snd") { S.cfg.sonido = ev.target.checked; save(); if (S.cfg.sonido) playOk(); return; }
     if (id === "tflt") { S.cfg.tema = ev.target.value; cur = null; save(); render(); }
     if (id === "dtflt") { deckTopic = ev.target.value; deckLimit = 150; render(); }
     if (id === "dflt") { deckLetter = ev.target.value; deckLimit = 150; render(); }
