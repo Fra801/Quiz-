@@ -273,7 +273,11 @@ details.add summary { cursor: pointer; font-weight: 600; }
   /* ---------- Estado y guardado ---------- */
   var LS = "letra-a-letra:v1";
   function fresh() { return { cards: {}, custom: [], cfg: { newPerDay: 20, letra: "", tema: "" }, daily: { day: 0, newDone: 0 }, log: {}, savedAt: 0 }; }
-  function normS(r) { var o = Object.assign(fresh(), r || {}); o.cfg = Object.assign({ newPerDay: 20, letra: "", tema: "" }, o.cfg); return o; }
+  function normS(r) { var o = Object.assign(fresh(), r || {}); o.cfg = Object.assign({ newPerDay: 20, letra: "", tema: "" }, o.cfg);
+    // Temas que ya no existen (por ejemplo "cu", que se dividió en cuatro): se vuelve a "Todos" / "Mis palabras"
+    if (o.cfg.tema && o.cfg.tema !== "mine" && !(window.TOPICS || {})[o.cfg.tema]) o.cfg.tema = "";
+    (o.custom || []).forEach(function (d) { if (d.t && d.t !== "mine" && !(window.TOPICS || {})[d.t]) d.t = "mine"; });
+    return o; }
   var S = fresh();
   try { var raw = localStorage.getItem(LS); if (raw) S = normS(JSON.parse(raw)); } catch (err) {}
 
