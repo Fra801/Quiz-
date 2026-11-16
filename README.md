@@ -1,6 +1,6 @@
 # Letra a Letra
 
-Juego de palabras con repetición espaciada. Aparece una letra y una definición, y tenés que escribir la palabra. Son 3051 palabras de nivel difícil, de la A a la Z con Ñ, repartidas en 13 temas: cuerpo humano y salud, animales, plantas y naturaleza, ciencia, matemáticas, geografía, Argentina, historia universal, lengua y literatura, arte, música y mitología, sociedad y política, economía, y vida cotidiana. Las palabras salen en orden aleatorio y podés filtrar por tema y por letra.
+Juego de palabras con repetición espaciada. Aparece una letra y una definición, y tenés que escribir la palabra. Son 3215 palabras de nivel difícil, de la A a la Z con Ñ, repartidas en 17 temas: anatomía, fisiología y biología humana, enfermedades y síntomas, medicina y cuidados, animales, plantas y naturaleza, ciencia, matemáticas, geografía, Argentina, historia universal, Segunda Guerra, lengua y literatura, arte, música y mitología, sociedad y política, economía, y vida cotidiana. Las palabras salen en orden aleatorio y podés filtrar por tema y por letra.
 
 Si acertás, elegís **Difícil**, **Bien** o **Fácil** y cada botón muestra cuándo vuelve la palabra. Si fallás o tocás **No la sé**, la palabra vuelve en un minuto. No importan las tildes, y un error de tipeo en palabras largas se cuenta como bien.
 
@@ -15,4 +15,4 @@ En **Progreso → Cuenta y copia de seguridad** pegás un token de GitHub con el
 
 ## Agregar palabras
 
-Las palabras están en `words.js`, una por línea: `["A", "ABDOMEN", "Parte del cuerpo entre el tórax y la pelvis…", "cu"]`. El último dato es el código del tema (la lista está en `window.TOPICS`). Si vale más de una forma, separalas con `/` (por ejemplo `"FRUTILLA/FRESA"`). También se pueden agregar desde la pestaña **Palabras**.
+Las palabras están en `words.js`, una por línea: `["A", "ABDOMEN", "Parte del cuerpo entre el tórax y la pelvis…", "at"]`. El último dato es el código del tema (la lista está en `window.TOPICS`). Si vale más de una forma, separalas con `/` (por ejemplo `"FRUTILLA/FRESA"`). También se pueden agregar desde la pestaña **Palabras**.
