@@ -66,6 +66,20 @@ button { cursor: pointer; }
 .tl .tt { display: flex; justify-content: space-between; gap: 8px; font-size: 15px; font-weight: 600; }
 .tl .tt small { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
 .form select { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; width: 100%; }
+.tbtn { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-weight: 600; color: var(--fg); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tbtn::after { content: " ▾"; color: var(--muted); }
+.tbtn[aria-expanded="true"]::after { content: " ▴"; }
+.tpick { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.tpick .th { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.tpick .th p { margin: 0; color: var(--muted); font-size: 14px; }
+.tpick .acts { display: flex; gap: 8px; }
+.tgrp { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.tgrp + .tgrp { border-top: 1px solid var(--line); padding-top: 10px; }
+.tg { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+.tcs { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 2px 12px; }
+.tc { display: flex; align-items: center; gap: 8px; font-size: 15px; padding: 3px 0; }
+.tc small { color: var(--muted); font-variant-numeric: tabular-nums; margin-left: auto; }
+.tpick input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); flex: none; margin: 0; }
 .filter select { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-weight: 600; color: var(--fg); }
 
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 22px 20px; display: flex; flex-direction: column; gap: 18px; }
@@ -272,10 +286,13 @@ details.add summary { cursor: pointer; font-weight: 600; }
 
   /* ---------- Estado y guardado ---------- */
   var LS = "letra-a-letra:v1";
-  function fresh() { return { cards: {}, custom: [], cfg: { newPerDay: 20, letra: "", tema: "" }, daily: { day: 0, newDone: 0 }, log: {}, savedAt: 0 }; }
+  function fresh() { return { cards: {}, custom: [], cfg: { newPerDay: 20, letra: "", tema: "", temas: [] }, daily: { day: 0, newDone: 0 }, log: {}, savedAt: 0 }; }
   function normS(r) { var o = Object.assign(fresh(), r || {}); o.cfg = Object.assign({ newPerDay: 20, letra: "", tema: "" }, o.cfg);
+    // Varios temas a la vez: "temas" es la lista elegida (vacía = todos). "tema" queda por compatibilidad con versiones viejas.
+    if (!Array.isArray(o.cfg.temas)) o.cfg.temas = o.cfg.tema ? [o.cfg.tema] : [];
     // Temas que ya no existen (por ejemplo "cu", que se dividió en cuatro): se vuelve a "Todos" / "Mis palabras"
-    if (o.cfg.tema && o.cfg.tema !== "mine" && !(window.TOPICS || {})[o.cfg.tema]) o.cfg.tema = "";
+    o.cfg.temas = o.cfg.temas.filter(function (k, i, a) { return (k === "mine" || (window.TOPICS || {})[k]) && a.indexOf(k) === i; });
+    o.cfg.tema = o.cfg.temas.length === 1 ? o.cfg.temas[0] : "";
     (o.custom || []).forEach(function (d) { if (d.t && d.t !== "mine" && !(window.TOPICS || {})[d.t]) d.t = "mine"; });
     return o; }
   var S = fresh();
@@ -420,7 +437,13 @@ details.add summary { cursor: pointer; font-weight: 600; }
   /* ---------- Cola ---------- */
   var tab = "study", cur = null, phase = "ask", typed = "", result = null, typo = false, ahead = false, undo = null;
   var confirmReset = false, formErr = "", q = "", deckLetter = "", deckTopic = "", deckLimit = 150;
-  function inFilter(d) { return (!S.cfg.letra || d.l === S.cfg.letra) && (!S.cfg.tema || d.t === S.cfg.tema); }
+  var pickOpen = false;
+  function inFilter(d) { return (!S.cfg.letra || d.l === S.cfg.letra) && (!S.cfg.temas.length || S.cfg.temas.indexOf(d.t) > -1); }
+  function setTemas(list) {
+    S.cfg.temas = list.filter(function (k, i, a) { return a.indexOf(k) === i; });
+    S.cfg.tema = S.cfg.temas.length === 1 ? S.cfg.temas[0] : "";
+    cur = null; save(); render();
+  }
   function queues() {
     ensureDaily();
     var now = Date.now(), today = dayNum(now), learn = [], rev = [], nw = [];
@@ -503,7 +526,46 @@ details.add summary { cursor: pointer; font-weight: 600; }
     return '<label class="filter">Tema <select id="' + id + '">' + opts.map(function (x) {
       return '<option value="' + x[0] + '"' + (val === x[0] ? " selected" : "") + ">" + esc(x[1]) + "</option>"; }).join("") + "</select></label>";
   }
-  function filters() { return '<div class="filters">' + topicSelect("tflt", S.cfg.tema) + letterSelect("flt", S.cfg.letra) + "</div>"; }
+  var GROUPS = [
+    ["Cuerpo humano y salud", ["at", "fi", "en", "me"]],
+    ["Naturaleza y ciencia", ["an", "pl", "ci", "ma"]],
+    ["Geografía y Argentina", ["ge", "ar"]],
+    ["Historia", ["hi", "pr", "eg", "mo", "gr", "ro", "md", "cb", "bz", "ao", "ia", "pc", "co", "rr", "ai", "rf", "ri", "xn", "pg", "ru", "eq", "sg", "gf", "dc", "mu"]],
+    ["Balística", ["bi", "bm", "be", "bt"]],
+    ["Armas", ["aa", "ab", "af", "av"]],
+    ["Cultura y sociedad", ["le", "am", "so", "ec", "vc"]]
+  ];
+  function groups() {
+    var used = {}, out = GROUPS.map(function (g) {
+      var ks = g[1].filter(function (k) { return TOPICS[k]; }); ks.forEach(function (k) { used[k] = 1; }); return [g[0], ks];
+    });
+    var rest = TKEYS.filter(function (k) { return !used[k]; });
+    if (S.custom.length) rest.push("mine");
+    if (rest.length) out.push(["Otros", rest]);
+    return out.filter(function (g) { return g[1].length; });
+  }
+  function topicLabel() {
+    var t = S.cfg.temas;
+    return !t.length ? "Todos" : t.length === 1 ? tname(t[0]) : t.length + " temas";
+  }
+  function topicPicker() {
+    if (!pickOpen) return "";
+    var sel = S.cfg.temas, cnt = {};
+    ORDER.forEach(function (d) { cnt[d.t] = (cnt[d.t] || 0) + 1; });
+    return '<section class="tpick" id="tpick"><div class="th"><p>' + (sel.length ? "Elegiste " + sel.length + (sel.length === 1 ? " tema." : " temas.") : "Si no marcás ninguno, se juegan todos.") + "</p>" +
+      '<div class="acts"><button class="btn-ghost sm" data-act="tall"' + (sel.length ? "" : " disabled") + '>Todos</button><button class="btn-main" style="padding:6px 14px;font-size:15px" data-act="tpick">Listo</button></div></div>' +
+      groups().map(function (g, gi) {
+        var n = g[1].filter(function (k) { return sel.indexOf(k) > -1; }).length;
+        return '<fieldset class="tgrp"><label class="tg"><input type="checkbox" class="tgc" data-g="' + gi + '"' + (n === g[1].length ? " checked" : "") + (n && n < g[1].length ? " data-ind" : "") + ">" + esc(g[0]) + "</label>" +
+          '<div class="tcs">' + g[1].map(function (k) {
+            return '<label class="tc"><input type="checkbox" class="tck" value="' + k + '"' + (sel.indexOf(k) > -1 ? " checked" : "") + ">" + esc(tname(k)) + "<small>" + (cnt[k] || 0) + "</small></label>";
+          }).join("") + "</div></fieldset>";
+      }).join("") + '<button class="btn-main full" data-act="tpick">Listo</button></section>';
+  }
+  function filters() {
+    return '<div class="filters"><span class="filter">Temas <button class="tbtn" data-act="tpick" aria-expanded="' + pickOpen + '">' + esc(topicLabel()) + "</button></span>" +
+      letterSelect("flt", S.cfg.letra) + "</div>" + topicPicker();
+  }
   function letterSelect(id, val) {
     return '<label class="filter">Letra <select id="' + id + '"><option value="">Todas</option>' +
       LETTERS.map(function (l) { return "<option" + (val === l ? " selected" : "") + ">" + l + "</option>"; }).join("") + "</select></label>";
@@ -528,7 +590,7 @@ details.add summary { cursor: pointer; font-weight: 600; }
     var lc = phase === "result" ? (result.ok ? " ok" : " bad") : "";
     html = head(qq, kind) + filters() + '<section class="card">' +
       '<div class="letter' + lc + '" aria-label="Letra ' + d.l + '">' + d.l + "</div>" +
-      (S.cfg.tema ? "" : '<span class="topic">' + esc(tname(d.t)) + "</span>") +
+      (S.cfg.temas.length === 1 ? "" : '<span class="topic">' + esc(tname(d.t)) + "</span>") +
       '<p class="def">' + esc(d.d) + "</p>";
     if (phase === "ask") {
       html += '<form class="ansrow" id="ansform" autocomplete="off"><input id="ans" type="text" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="Tu respuesta" aria-label="Tu respuesta">' +
@@ -672,8 +734,9 @@ details.add summary { cursor: pointer; font-weight: 600; }
   function render() {
     var y = window.scrollY;
     app.innerHTML = tab === "study" ? viewStudy() : tab === "deck" ? viewDeck() : viewStats();
-    if (tab === "study" && phase === "ask" && cur) { var a = document.getElementById("ans"); if (a) { a.value = typed; try { a.focus({ preventScroll: true }); } catch (e) { a.focus(); } } }
-    if (tab !== "study") window.scrollTo(0, y);
+    Array.prototype.forEach.call(app.querySelectorAll("[data-ind]"), function (el) { el.indeterminate = true; });
+    if (tab === "study" && phase === "ask" && cur && !pickOpen) { var a = document.getElementById("ans"); if (a) { a.value = typed; try { a.focus({ preventScroll: true }); } catch (e) { a.focus(); } } }
+    if (tab !== "study" || pickOpen) window.scrollTo(0, y);
   }
 
   /* ---------- Eventos ---------- */
@@ -682,13 +745,15 @@ details.add summary { cursor: pointer; font-weight: 600; }
     if (!t) return;
     if (t.dataset.tab) { tab = t.dataset.tab; render(); window.scrollTo(0, 0); return; }
     if (t.dataset.rate) { rate(+t.dataset.rate); return; }
-    if (t.dataset.topic) { S.cfg.tema = t.dataset.topic; S.cfg.letra = ""; cur = null; save(); tab = "study"; render(); window.scrollTo(0, 0); return; }
+    if (t.dataset.topic) { S.cfg.letra = ""; pickOpen = false; tab = "study"; setTemas([t.dataset.topic]); window.scrollTo(0, 0); return; }
     if (t.dataset.letter) { S.cfg.letra = t.dataset.letter; cur = null; save(); tab = "study"; render(); window.scrollTo(0, 0); return; }
     if (t.dataset.del) { S.custom = S.custom.filter(function (d) { return d.id !== t.dataset.del; }); delete S.cards[t.dataset.del]; if (cur === t.dataset.del) cur = null; rebuild(); save(); render(); return; }
     var a = t.dataset.act;
     if (a === "skip") check(true);
     else if (a === "typo") { typo = true; render(); }
     else if (a === "undo") doUndo();
+    else if (a === "tpick") { pickOpen = !pickOpen; render(); }
+    else if (a === "tall") setTemas([]);
     else if (a === "ahead") { ahead = true; cur = null; render(); }
     else if (a === "more") { ensureDaily(); S.daily.newDone = Math.max(0, S.daily.newDone - 10); if (S.daily.newDone === 0 && S.cfg.newPerDay === 0) S.cfg.newPerDay = 10; save(); render(); }
     else if (a === "deckmore") { deckLimit += 300; render(); }
@@ -706,7 +771,14 @@ details.add summary { cursor: pointer; font-weight: 600; }
     if (id === "npd") { S.cfg.newPerDay = Math.max(0, Math.min(200, parseInt(ev.target.value, 10) || 0)); save(); render(); }
     if (id === "flt") { S.cfg.letra = ev.target.value; cur = null; save(); render(); }
     if (id === "snd") { S.cfg.sonido = ev.target.checked; save(); if (S.cfg.sonido) playOk(); return; }
-    if (id === "tflt") { S.cfg.tema = ev.target.value; cur = null; save(); render(); }
+    if (ev.target.classList.contains("tck")) {
+      var k = ev.target.value, cur2 = S.cfg.temas.filter(function (x) { return x !== k; });
+      setTemas(ev.target.checked ? cur2.concat([k]) : cur2); return;
+    }
+    if (ev.target.classList.contains("tgc")) {
+      var ks = groups()[+ev.target.dataset.g][1], rest = S.cfg.temas.filter(function (x) { return ks.indexOf(x) < 0; });
+      setTemas(ev.target.checked ? rest.concat(ks) : rest); return;
+    }
     if (id === "dtflt") { deckTopic = ev.target.value; deckLimit = 150; render(); }
     if (id === "dflt") { deckLetter = ev.target.value; deckLimit = 150; render(); }
   });
